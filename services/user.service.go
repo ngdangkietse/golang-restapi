@@ -1,22 +1,27 @@
 package services
 
 import (
+	"fmt"
 	"golang-rest-api/database"
 	"golang-rest-api/errors"
 	"golang-rest-api/models"
 	"golang-rest-api/payload"
+	"golang-rest-api/shared"
+	"golang-rest-api/utils"
 	"log"
 )
 
+var logger = shared.ConfigLogger()
+
 func CreateUser(user models.User) int {
-	db := database.DatabaseConnect()
+	db := database.Connect()
 	if user.Name == "" || user.Address == "" {
 		return errors.InvalidData
 	}
 
 	if err := db.Table(models.User{}.TableName()).
 		Create(&user).Error; err != nil {
-		log.Fatal("Error when creating user:", err)
+		logger.Error("Error when creating user!")
 		return errors.Failed
 	}
 
@@ -24,12 +29,12 @@ func CreateUser(user models.User) int {
 }
 
 func FindUserById(userId int) *payload.UserResponse {
-	db := database.DatabaseConnect()
+	db := database.Connect()
 	var user models.User
 	if err := db.Table(models.User{}.TableName()).
 		Where("id = ?", userId).
 		First(&user).Error; err != nil {
-		log.Fatal("Error when getting user:", err)
+		logger.Error(fmt.Sprintf("User ID [%d] not found!", userId))
 		return &payload.UserResponse{
 			Code: errors.NotFound,
 		}
@@ -46,11 +51,14 @@ func UpdateUser(user models.User) int {
 		return errors.InvalidData
 	}
 
-	db := database.DatabaseConnect()
+	if FindUserById(user.Id).Code == errors.NotFound {
+		return errors.NotFound
+	}
+
+	db := database.Connect()
 	if err := db.Table(models.User{}.TableName()).
-		Where("id = ?", user.Id).
 		Updates(&user).Error; err != nil {
-		log.Fatal("Error when updating user:", err)
+		logger.Error("Error when updating user!")
 		return errors.Failed
 	}
 
@@ -61,7 +69,7 @@ func DeleteUserById(userId int) int {
 	if FindUserById(userId).Code == errors.NotFound {
 		return errors.NotFound
 	}
-	db := database.DatabaseConnect()
+	db := database.Connect()
 	if err := db.Table(models.User{}.TableName()).
 		Where("id = ?", userId).
 		Delete(nil).Error; err != nil {
@@ -72,24 +80,16 @@ func DeleteUserById(userId int) int {
 }
 
 func GetUsers(paging models.Paging) []models.User {
-	db := database.DatabaseConnect()
+	db := database.Connect()
 	var users []models.User
 
-	if paging.PageSize <= 0 {
-		paging.PageSize = 1
-	}
-
-	if paging.PageLimit <= 0 {
-		paging.PageLimit = 10
-	}
-
-	offset := (paging.PageSize - 1) * paging.PageLimit
+	paging = utils.Paging(paging)
 
 	if err := db.Table(models.User{}.TableName()).
-		Limit(paging.PageLimit).
-		Offset(offset).
+		Limit(paging.PageSize).
+		Offset(utils.PageOffset(paging.PageIndex, paging.PageSize)).
+		Order(paging.PageSort + " " + paging.PageDirection).
 		Find(&users).Error; err != nil {
-		log.Fatal("Error when deleting user:", err)
 		return []models.User{}
 	}
 

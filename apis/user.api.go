@@ -18,7 +18,7 @@ func GetUsers(c *gin.Context) {
 		return
 	}
 
-	c.IndentedJSON(http.StatusOK, services.GetUsers(paging))
+	c.IndentedJSON(http.StatusOK, common.SuccessAsData(services.GetUsers(paging)))
 }
 
 func GetUserById(c *gin.Context) {
@@ -29,7 +29,7 @@ func GetUserById(c *gin.Context) {
 		return
 	}
 
-	var resp = services.FindUserById(userId)
+	resp := services.FindUserById(userId)
 	if errors.IsSuccess(resp.Code) {
 		c.IndentedJSON(http.StatusOK, resp)
 	} else {
@@ -41,30 +41,24 @@ func CreateUser(c *gin.Context) {
 	var user models.User
 
 	if err := c.BindJSON(&user); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, common.Failed(errors.InvalidData))
 		return
 	}
 
 	resp := services.CreateUser(user)
-	if errors.IsSuccess(resp) {
-		c.IndentedJSON(http.StatusOK, resp)
-	} else {
-		c.IndentedJSON(http.StatusOK, common.Failed(resp))
-	}
+	common.UpsertResponse(c, resp)
 }
 
 func UpdateUser(c *gin.Context) {
 	var user models.User
 
 	if err := c.BindJSON(&user); err != nil {
+		c.IndentedJSON(http.StatusBadRequest, common.Failed(errors.InvalidData))
 		return
 	}
 
-	var resp = services.UpdateUser(user)
-	if errors.IsSuccess(resp) {
-		c.IndentedJSON(http.StatusOK, resp)
-	} else {
-		c.IndentedJSON(http.StatusOK, common.Failed(resp))
-	}
+	resp := services.UpdateUser(user)
+	common.UpsertResponse(c, resp)
 }
 
 func DeleteById(c *gin.Context) {
@@ -75,10 +69,6 @@ func DeleteById(c *gin.Context) {
 		return
 	}
 
-	var resp = services.DeleteUserById(userId)
-	if errors.IsSuccess(resp) {
-		c.IndentedJSON(http.StatusOK, common.Success())
-	} else {
-		c.IndentedJSON(http.StatusOK, common.Failed(resp))
-	}
+	resp := services.DeleteUserById(userId)
+	common.DeleteResponse(c, resp)
 }

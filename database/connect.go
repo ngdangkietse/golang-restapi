@@ -7,7 +7,7 @@ import (
 	"log"
 )
 
-func DatabaseConnect() (db *gorm.DB) {
+func Connect() (db *gorm.DB) {
 	mysqlUser := "ngdangkiet"
 	mysqlPass := "pwd"
 	mysqlHost := "127.0.0.1"

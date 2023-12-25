@@ -1,6 +1,8 @@
 package models
 
 type Paging struct {
-	PageSize  int `json:"pageSize"`
-	PageLimit int `json:"pageLimit"`
+	PageIndex     int    `json:"pageIndex"`
+	PageSize      int    `json:"pageSize"`
+	PageSort      string `json:"pageSort"`
+	PageDirection string `json:"pageDirection"`
 }
