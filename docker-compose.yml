@@ -3,6 +3,7 @@ version: "3.9"
 services:
   mysql:
     image: mysql:8.0
+    container_name: golang-restful-mysql
     command: --default-authentication-plugin=mysql_native_password
     ports:
       - "3307:3306"
@@ -14,6 +15,11 @@ services:
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     volumes:
       - storage-mysql:/var/lib/mysql
+
 volumes:
   storage-mysql:
     driver: local
+
+networks:
+  golang-restful-network:
+    driver: bridge
