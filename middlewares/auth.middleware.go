@@ -13,6 +13,7 @@ func Authentication() gin.HandlerFunc {
 		token := auth.GetTokenFromRequest(c)
 		if token == "" {
 			c.IndentedJSON(http.StatusUnauthorized, payload.HandleException("Request not contains access_token"))
+			c.Abort()
 			return
 		}
 
@@ -20,6 +21,7 @@ func Authentication() gin.HandlerFunc {
 
 		if err != nil {
 			c.IndentedJSON(http.StatusUnauthorized, payload.HandleException(fmt.Sprintf("Error: [%v]", err.Error())))
+			c.Abort()
 			return
 		}
 
