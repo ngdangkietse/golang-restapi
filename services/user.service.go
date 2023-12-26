@@ -18,9 +18,9 @@ func CreateUser(user models.User) (bool, interface{}) {
 		return false, payload.HandleInvalidData(errorMap)
 	}
 
-	success, data := FindUserByEmail(user.Email)
+	success, _ := FindUserByEmail(user.Email)
 	if success {
-		return false, data
+		return false, payload.HandleAlreadyExists("User Email", user.Email)
 	}
 
 	if err := user.HashPassword(user.Password); err != nil {
