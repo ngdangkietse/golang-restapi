@@ -5,6 +5,7 @@ import (
 	"github.com/joho/godotenv"
 	"golang-rest-api/controllers"
 	"golang-rest-api/database"
+	"golang-rest-api/middlewares"
 	"log"
 )
 
@@ -35,11 +36,19 @@ func loadEnv() {
 func serverApplication() {
 	router := gin.Default()
 
-	router.GET("/api/v1/users", controllers.GetUsers)
-	router.GET("/api/v1/users/detail/:id", controllers.GetUserById)
-	router.POST("/api/v1/users", controllers.CreateUser)
-	router.PUT("/api/v1/users", controllers.UpdateUser)
-	router.DELETE("/api/v1/users/:id", controllers.DeleteById)
+	api := router.Group("/api/v1")
+	{
+		api.POST("/login", controllers.Authenticate)
+		api.POST("/users", controllers.CreateUser)
+
+		secured := api.Group("/secured").Use(middlewares.Authentication())
+		{
+			secured.GET("/users", controllers.GetUsers)
+			secured.GET("/users/detail/:id", controllers.GetUserById)
+			secured.PUT("/users", controllers.UpdateUser)
+			secured.DELETE("/users/:id", controllers.DeleteById)
+		}
+	}
 
 	err := router.Run("localhost:6969")
 	if err != nil {

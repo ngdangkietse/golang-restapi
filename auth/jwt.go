@@ -13,29 +13,38 @@ import (
 
 var jwtSecretKey = []byte(os.Getenv("JWT_PRIVATE_KEY"))
 
-func GenerateToken(email string, userId int, roleId int) (*models.LoginResponse, error) {
+type JwtUserClaims struct {
+	UserId int    `json:"userId"`
+	RoleId int    `json:"roleId"`
+	Email  string `json:"email"`
+}
+
+func GenerateToken(user models.User) (string, error) {
 	tokenExp, _ := strconv.Atoi(os.Getenv("TOKEN_EXP"))
 
 	exp := time.Now().Add(time.Duration(tokenExp) * time.Hour).Unix()
 
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": userId,
-		"roleId": roleId,
-		"email":  email,
-		"iat":    time.Now().Unix(),
-		"exp":    exp,
-	})
+	mapClaims := make(jwt.MapClaims)
+	mapClaims["sub"] = user.Email
+	mapClaims["user"] = JwtUserClaims{
+		UserId: user.Id,
+		RoleId: user.RoleId,
+		Email:  user.Email,
+	}
+	mapClaims["iat"] = time.Now().Unix()
+	mapClaims["nbf"] = time.Now().Unix()
+	mapClaims["exp"] = exp
 
-	token, err := claims.SignedString(jwtSecretKey)
+	token, err := jwt.NewWithClaims(jwt.SigningMethodHS256, mapClaims).SignedString(jwtSecretKey)
 
-	return &models.LoginResponse{
-		Token:  token,
-		UserId: userId,
-		RoleId: roleId,
-	}, err
+	if err != nil {
+		return "", fmt.Errorf(err.Error())
+	}
+
+	return token, nil
 }
 
-func ValidateToken(jwtToken string) (bool, error) {
+func ValidateToken(jwtToken string) (interface{}, error) {
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
@@ -44,14 +53,16 @@ func ValidateToken(jwtToken string) (bool, error) {
 	})
 
 	if err != nil {
-		return false, err
+		return nil, fmt.Errorf(err.Error())
 	}
 
-	if token.Valid {
-		return true, nil
+	claims, ok := token.Claims.(jwt.MapClaims)
+
+	if !token.Valid || !ok {
+		return nil, fmt.Errorf(err.Error())
 	}
 
-	return false, err
+	return claims["user"], nil
 }
 
 func GetTokenFromRequest(c *gin.Context) string {
