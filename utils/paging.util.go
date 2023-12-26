@@ -1,34 +1,34 @@
 package utils
 
 import (
-	"golang-rest-api/common"
+	"golang-rest-api/constants"
 	"golang-rest-api/models"
 )
 
 func PageDirection(direction string) string {
-	if direction != common.Asc && direction != common.Desc {
-		return common.Asc
+	if direction != constants.Asc && direction != constants.Desc {
+		return constants.Asc
 	}
 	return direction
 }
 
 func PageIndex(index int) int {
 	if index <= 0 {
-		return common.PageIndexDefault
+		return constants.PageIndexDefault
 	}
 	return index
 }
 
 func PageSize(size int) int {
 	if size <= 0 {
-		return common.PageSizeDefault
+		return constants.PageSizeDefault
 	}
 	return size
 }
 
 func PageSort(sort string) string {
 	if sort == "" {
-		return common.PageSortDefault
+		return constants.PageSortDefault
 	}
 	return sort
 }

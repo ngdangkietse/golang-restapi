@@ -1,97 +1,122 @@
 package services
 
 import (
-	"fmt"
 	"golang-rest-api/database"
-	"golang-rest-api/errors"
 	"golang-rest-api/models"
 	"golang-rest-api/payload"
-	"golang-rest-api/shared"
 	"golang-rest-api/utils"
-	"log"
+	"golang-rest-api/validators"
 )
 
-var logger = shared.ConfigLogger()
+//var logger = shared.ConfigLogger()
 
-func CreateUser(user models.User) int {
-	db := database.Connect()
-	if user.Name == "" || user.Address == "" {
-		return errors.InvalidData
+func CreateUser(user models.User) (bool, interface{}) {
+	db := database.Instance
+
+	errorMap := validators.ValidatorUser(user, true)
+	if len(errorMap) > 0 {
+		return false, payload.HandleInvalidData(errorMap)
 	}
 
-	if err := db.Table(models.User{}.TableName()).
+	success, data := FindUserByEmail(user.Email)
+	if success {
+		return false, data
+	}
+
+	if err := user.HashPassword(user.Password); err != nil {
+		return false, payload.HandleException(err.Error())
+	}
+
+	if err := db.Table(user.TableName()).
 		Create(&user).Error; err != nil {
-		logger.Error("Error when creating user!")
-		return errors.Failed
+		return false, payload.HandleException(err.Error())
 	}
 
-	return user.Id
+	return true, payload.HandleSuccess(user.Id)
 }
 
-func FindUserById(userId int) *payload.UserResponse {
-	db := database.Connect()
+func FindUserByEmail(email string) (bool, interface{}) {
+	db := database.Instance
+
 	var user models.User
-	if err := db.Table(models.User{}.TableName()).
+	record := db.Table(user.TableName()).Where("email = ?", email).First(&user)
+
+	if record.Error != nil {
+		return false, payload.HandleNotFound("Email", email)
+	}
+
+	return true, payload.HandleSuccess(user)
+}
+
+func FindUserById(userId int) (bool, interface{}) {
+	db := database.Instance
+	var user models.User
+	if err := db.Table(user.TableName()).
 		Where("id = ?", userId).
 		First(&user).Error; err != nil {
-		logger.Error(fmt.Sprintf("User ID [%d] not found!", userId))
-		return &payload.UserResponse{
-			Code: errors.NotFound,
-		}
+		return false, payload.HandleNotFound("UserId", userId)
 	}
 
-	return &payload.UserResponse{
-		Code: errors.Success,
-		Data: &user,
-	}
+	return true, payload.HandleSuccess(user)
 }
 
-func UpdateUser(user models.User) int {
-	if user.Name == "" || user.Address == "" {
-		return errors.InvalidData
+func UpdateUser(user models.User) (bool, interface{}) {
+	db := database.Instance
+
+	errorMap := validators.ValidatorUser(user, false)
+	if len(errorMap) > 0 {
+		return false, payload.HandleInvalidData(errorMap)
 	}
 
-	if FindUserById(user.Id).Code == errors.NotFound {
-		return errors.NotFound
+	success, _ := FindUserById(user.Id)
+
+	if !success {
+		return false, payload.HandleNotFound("UserId", user.Id)
 	}
 
-	db := database.Connect()
-	if err := db.Table(models.User{}.TableName()).
+	if err := user.HashPassword(user.Password); err != nil {
+		return false, payload.HandleException(err.Error())
+	}
+
+	if err := db.Table(user.TableName()).
 		Updates(&user).Error; err != nil {
-		logger.Error("Error when updating user!")
-		return errors.Failed
+		return false, payload.HandleException(err.Error())
 	}
 
-	return user.Id
+	return true, payload.HandleSuccess(user.Id)
 }
 
-func DeleteUserById(userId int) int {
-	if FindUserById(userId).Code == errors.NotFound {
-		return errors.NotFound
+func DeleteUserById(userId int) (bool, interface{}) {
+	db := database.Instance
+
+	success, _ := FindUserById(userId)
+
+	if !success {
+		return false, payload.HandleNotFound("UserId", userId)
 	}
-	db := database.Connect()
-	if err := db.Table(models.User{}.TableName()).
+
+	if err := db.Table("tbl_user").
 		Where("id = ?", userId).
 		Delete(nil).Error; err != nil {
-		log.Fatal("Error when deleting user:", err)
-		return errors.Failed
+		return false, payload.HandleException(err.Error())
 	}
-	return errors.Success
+	return true, payload.HandleSuccess(nil)
 }
 
-func GetUsers(paging models.Paging) []models.User {
-	db := database.Connect()
+func GetUsers(paging models.Paging) (bool, interface{}) {
+	db := database.Instance
 	var users []models.User
 
 	paging = utils.Paging(paging)
 
-	if err := db.Table(models.User{}.TableName()).
+	var user models.User
+	if err := db.Table(user.TableName()).
 		Limit(paging.PageSize).
 		Offset(utils.PageOffset(paging.PageIndex, paging.PageSize)).
 		Order(paging.PageSort + " " + paging.PageDirection).
 		Find(&users).Error; err != nil {
-		return []models.User{}
+		return true, payload.HandleSuccess([]models.User{})
 	}
 
-	return users
+	return true, payload.HandleSuccess(users)
 }

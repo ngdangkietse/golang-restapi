@@ -1,9 +1,10 @@
 package errors
 
 const (
-	Success       int = 1
-	Failed        int = -1
-	InvalidData   int = -2
-	NotFound      int = -3
-	AlreadyExists int = -4
+	Success          int = 1
+	Failed           int = -1
+	InvalidData      int = -2
+	NotFound         int = -3
+	AlreadyExists    int = -4
+	UnknownException int = -5
 )
